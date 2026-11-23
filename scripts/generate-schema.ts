@@ -24,7 +24,7 @@ const aliases = new Map(
 const declaration = source.match(/export interface SandboxOptions \{([\s\S]*?)^\}/m)?.[1];
 if (declaration === undefined) throw new Error("SandboxOptions interface not found");
 
-const members = [...declaration.matchAll(/^  (\w+): (\w+(?:\[\])?);$/gm)];
+const members = [...declaration.matchAll(/^ {2}(\w+): (\w+(?:\[\])?);$/gm)];
 if (members.length === 0) throw new Error("No SandboxOptions members found");
 
 function toSchema(type: string): Schema {
@@ -54,8 +54,8 @@ export function generateSchema(): Schema {
       type: "string",
       minLength: 1,
       description:
-        "Optional schema URI for editor tooling only; the plugin never fetches it or uses it for runtime security decisions."
-    }
+        "Optional schema URI for editor tooling only; the plugin never fetches it or uses it for runtime security decisions.",
+    },
   };
 
   for (const [, name, type] of members) {
@@ -66,7 +66,7 @@ export function generateSchema(): Schema {
     if (inferred.items !== undefined) {
       inferred.items = {
         ...((previous.items as Schema | undefined) ?? {}),
-        ...(inferred.items as Schema)
+        ...(inferred.items as Schema),
       };
     }
     properties[key] = { ...previous, ...inferred, default: DEFAULT_OPTIONS[key] };
