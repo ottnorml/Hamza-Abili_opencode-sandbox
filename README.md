@@ -178,26 +178,36 @@ Example `~/.config/opencode/opencode-sandbox.json`:
 ### JSON Schema (editor support)
 
 The [trusted policy JSON Schema](schemas/opencode-sandbox.schema.json) provides
-completion, descriptions and value validation for all eleven supported policy
-options. In VS Code, add a schema association to your **User Settings (JSON)**
-using the absolute path to a local checkout (or a raw URL to a published copy):
+completion and validation for every policy option. The schema's names, types,
+enum values and defaults are generated from `SandboxOptions` and
+`DEFAULT_OPTIONS`. Additional security constraints and descriptions remain
+reviewed metadata in the schema. To regenerate or verify them:
+
+```sh
+bun run schema:generate
+bun run schema:check
+```
+
+The repository CI runs `schema:check` to catch drift when options change.
+Schema validation is editor-side only: the runtime still checks trusted-file
+ownership, policy precedence, paths and permissions.
+
+The policy parser also accepts `"$schema"` **as a non-empty string** for
+editor association. It is ignored by the runtime and never fetched:
 
 ```json
 {
-  "json.schemas": [
-    {
-      "fileMatch": ["**/opencode-sandbox.json"],
-      "url": "/absolute/path/to/checkout/schemas/opencode-sandbox.schema.json"
-    }
-  ]
+  "$schema": "https://raw.githubusercontent.com/ottnorml/Hamza-Abili_opencode-sandbox/main/schemas/opencode-sandbox.schema.json",
+  "network": "deny",
+  "mode": "enforce",
+  "unsandboxedCommands": ["gh auth status", "gh pr *"]
 }
 ```
 
-**Do not put a `"$schema"` key in `opencode-sandbox.json`.** The trusted
-policy parser rejects unknown keys and would ignore the entire policy. Schema
-validation is editor-only: the plugin still enforces ownership, path safety,
-platform constraints and system-policy precedence at runtime. Run
-`bunx --bun @hamzaabili/opencode-sandbox doctor` to inspect the effective policy.
+This URL resolves once the schema is merged into the linked branch. Alternatively,
+associate a local checkout's schema through your editor settings. Older plugin
+versions reject `"$schema"` as an unknown key and ignore the **entire policy**,
+so update the installed plugin before using the inline association.
 
 ### Migrating from 0.2.x
 
