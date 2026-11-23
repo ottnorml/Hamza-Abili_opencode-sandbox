@@ -46,6 +46,7 @@
   },
   "files": [
     "src",
+    "schemas",
     "scripts",
     "index.ts",
     "README.md",
