@@ -90,7 +90,6 @@ export function parseOptionsSafe(raw: unknown, cwd: string): ParsedOptions {
     errors.push("$schema must be a non-empty string");
   }
 
-
   const writable = new Set<string>();
   if (record.writablePaths !== undefined) present.add("writablePaths");
   const writableValues = record.writablePaths === undefined ? [] : stringList(record.writablePaths);
