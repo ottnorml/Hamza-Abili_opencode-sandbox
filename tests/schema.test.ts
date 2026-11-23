@@ -21,7 +21,7 @@ const schema = JSON.parse(
 
 describe("trusted policy JSON Schema", () => {
   test("is synchronized with generated types, enums and defaults", () => {
-    expect(schema).toEqual(generateSchema());
+    expect(schema).toEqual(generateSchema() as typeof schema);
   });
   test("covers exactly the supported options and rejects unknown keys", () => {
     expect(schema.$schema).toBe("https://json-schema.org/draft/2020-12/schema");
