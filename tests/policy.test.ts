@@ -140,7 +140,7 @@ describe("resolveEffectiveOptions", () => {
       writePolicy(f.paths.user, {
         $schema: "https://example.com/opencode-sandbox.schema.json",
         network: "deny",
-        unsandboxedCommands: ["gh auth status"]
+        unsandboxedCommands: ["gh auth status"],
       });
       const result = resolve(f);
       expect(result.errors).toEqual([]);
@@ -150,7 +150,7 @@ describe("resolveEffectiveOptions", () => {
 
       writePolicy(f.paths.user, {
         $schema: 42,
-        network: "allow"
+        network: "allow",
       });
       const invalid = resolve(f);
       expect(invalid.user.used).toBe(false);
