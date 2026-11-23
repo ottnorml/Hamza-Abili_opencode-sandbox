@@ -29,6 +29,7 @@ const POLICY_FILENAME = "opencode-sandbox.json";
 const MAX_POLICY_BYTES = 1_048_576;
 
 const KNOWN_KEYS = new Set([
+  "$schema",
   "network",
   "mode",
   "writablePaths",
