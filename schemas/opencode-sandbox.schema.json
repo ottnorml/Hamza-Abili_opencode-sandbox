@@ -7,19 +7,13 @@
   "properties": {
     "network": {
       "type": "string",
-      "enum": [
-        "deny",
-        "allow"
-      ],
+      "enum": ["deny", "allow"],
       "default": "deny",
       "description": "Whether sandboxed shell commands can access the network. 'allow' permits unrestricted shell network access, not just GitHub."
     },
     "mode": {
       "type": "string",
-      "enum": [
-        "enforce",
-        "permissive"
-      ],
+      "enum": ["enforce", "permissive"],
       "default": "enforce",
       "description": "In enforce mode, shell commands are refused if the sandbox cannot start. Permissive mode is a global sandbox opt-out."
     },
@@ -77,19 +71,13 @@
     },
     "toolGuard": {
       "type": "string",
-      "enum": [
-        "enforce",
-        "off"
-      ],
+      "enum": ["enforce", "off"],
       "default": "enforce",
       "description": "Apply policy checks to OpenCode file tools and webfetch; off disables this in-process guard but not the shell sandbox."
     },
     "webfetch": {
       "type": "string",
-      "enum": [
-        "allow",
-        "deny"
-      ],
+      "enum": ["allow", "deny"],
       "default": "allow",
       "description": "Allow or deny the OpenCode webfetch tool. Requires toolGuard=enforce when set to deny."
     },
@@ -134,9 +122,7 @@
             "const": "off"
           }
         },
-        "required": [
-          "toolGuard"
-        ]
+        "required": ["toolGuard"]
       },
       "then": {
         "properties": {
@@ -154,11 +140,7 @@
     {
       "network": "deny",
       "mode": "enforce",
-      "unsandboxedCommands": [
-        "gh auth status",
-        "gh pr *",
-        "gh issue *"
-      ]
+      "unsandboxedCommands": ["gh auth status", "gh pr *", "gh issue *"]
     }
   ]
 }
