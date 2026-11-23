@@ -175,6 +175,30 @@ Example `~/.config/opencode/opencode-sandbox.json`:
 }
 ```
 
+### JSON Schema (editor support)
+
+The [trusted policy JSON Schema](schemas/opencode-sandbox.schema.json) provides
+completion, descriptions and value validation for all eleven supported policy
+options. In VS Code, add a schema association to your **User Settings (JSON)**
+using the absolute path to a local checkout (or a raw URL to a published copy):
+
+```json
+{
+  "json.schemas": [
+    {
+      "fileMatch": ["**/opencode-sandbox.json"],
+      "url": "/absolute/path/to/checkout/schemas/opencode-sandbox.schema.json"
+    }
+  ]
+}
+```
+
+**Do not put a `"$schema"` key in `opencode-sandbox.json`.** The trusted
+policy parser rejects unknown keys and would ignore the entire policy. Schema
+validation is editor-only: the plugin still enforces ownership, path safety,
+platform constraints and system-policy precedence at runtime. Run
+`bunx --bun @hamzaabili/opencode-sandbox doctor` to inspect the effective policy.
+
 ### Migrating from 0.2.x
 
 If a repository or your OpenCode config used `network: "allow"`,
