@@ -134,6 +134,33 @@ describe("resolveEffectiveOptions", () => {
     }
   });
 
+  test("accepts $schema metadata without changing the effective permissions", () => {
+    const f = fixture();
+    try {
+      writePolicy(f.paths.user, {
+        $schema: "https://example.com/opencode-sandbox.schema.json",
+        network: "deny",
+        unsandboxedCommands: ["gh auth status"]
+      });
+      const result = resolve(f);
+      expect(result.errors).toEqual([]);
+      expect(result.user.used).toBe(true);
+      expect(result.options.unsandboxedCommands).toEqual(["gh auth status"]);
+      expect(result.options.network).toBe("deny");
+
+      writePolicy(f.paths.user, {
+        $schema: 42,
+        network: "allow"
+      });
+      const invalid = resolve(f);
+      expect(invalid.user.used).toBe(false);
+      expect(invalid.options.network).toBe("deny");
+      expect(invalid.errors.join("\n")).toContain("$schema");
+    } finally {
+      fs.rmSync(f.root, { recursive: true, force: true });
+    }
+  });
+
   test("webfetch can be denied from the trusted file", () => {
     const f = fixture();
     try {
