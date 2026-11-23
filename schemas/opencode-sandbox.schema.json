@@ -1,0 +1,164 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenCode Sandbox trusted policy",
+  "description": "Trusted policy file opencode-sandbox.json. The plugin rejects unknown keys. This editor schema checks value shapes and selected cross-field constraints; filesystem ownership, canonical paths and OS sandbox rules are validated at runtime.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "network": {
+      "type": "string",
+      "enum": [
+        "deny",
+        "allow"
+      ],
+      "default": "deny",
+      "description": "Whether sandboxed shell commands can access the network. 'allow' permits unrestricted shell network access, not just GitHub."
+    },
+    "mode": {
+      "type": "string",
+      "enum": [
+        "enforce",
+        "permissive"
+      ],
+      "default": "enforce",
+      "description": "In enforce mode, shell commands are refused if the sandbox cannot start. Permissive mode is a global sandbox opt-out."
+    },
+    "writablePaths": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true,
+      "default": [],
+      "description": "Additional existing host paths writable by sandboxed commands. Relative paths resolve against the workspace. The host home, sensitive credential directories and protected system paths are not eligible."
+    },
+    "readablePaths": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true,
+      "default": [],
+      "description": "Additional host paths readable inside the sandbox, including explicitly trusted credential paths. Path existence and conflicts with writable paths are checked at runtime."
+    },
+    "passEnv": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+        "not": {
+          "enum": [
+            "HOME",
+            "TMPDIR",
+            "PATH",
+            "SHELL",
+            "USER",
+            "LOGNAME",
+            "PWD",
+            "OLDPWD",
+            "XDG_CACHE_HOME",
+            "XDG_CONFIG_HOME",
+            "XDG_DATA_HOME",
+            "XDG_RUNTIME_DIR"
+          ]
+        }
+      },
+      "uniqueItems": true,
+      "default": [],
+      "description": "Host environment variable names passed to sandboxed commands. Reserved environment keys cannot be overridden. Avoid passing secrets unless explicitly necessary."
+    },
+    "shell": {
+      "type": "string",
+      "pattern": "^/",
+      "default": "/bin/bash",
+      "description": "Absolute path to the shell used inside the sandbox (Linux/macOS/WSL)."
+    },
+    "toolGuard": {
+      "type": "string",
+      "enum": [
+        "enforce",
+        "off"
+      ],
+      "default": "enforce",
+      "description": "Apply policy checks to OpenCode file tools and webfetch; off disables this in-process guard but not the shell sandbox."
+    },
+    "webfetch": {
+      "type": "string",
+      "enum": [
+        "allow",
+        "deny"
+      ],
+      "default": "allow",
+      "description": "Allow or deny the OpenCode webfetch tool. Requires toolGuard=enforce when set to deny."
+    },
+    "webfetchAllowlist": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^(?:\\*\\.|\\.)?[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)*\\.?$",
+        "description": "Plain hostname, e.g. github.com or *.github.com; not a URL. A wildcard includes the apex and subdomains."
+      },
+      "uniqueItems": true,
+      "default": [],
+      "description": "Restrict OpenCode webfetch requests to these hostnames. An empty list means no host restriction. Does not restrict shell network traffic."
+    },
+    "deniedPaths": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "\\S"
+      },
+      "uniqueItems": true,
+      "default": [],
+      "description": "Workspace paths hidden from the sandbox and denied by the file-tool guard. Relative paths resolve against the workspace; OS-specific missing-path handling still applies."
+    },
+    "unsandboxedCommands": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^(?!\\s*$)(?!.*[;&|`$()<>\\r\\n])(?:[^*]*|[^*]+ \\*)$",
+        "description": "Exact shell command or a 'prefix *' pattern. Shell metacharacters and chains are prohibited. These commands execute on the host with its full environment and permissions."
+      },
+      "uniqueItems": true,
+      "default": [],
+      "description": "Commands explicitly permitted to bypass the shell sandbox. Prefer exact commands instead of broad wildcard prefixes, especially for credentialed CLI tools."
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "toolGuard": {
+            "const": "off"
+          }
+        },
+        "required": [
+          "toolGuard"
+        ]
+      },
+      "then": {
+        "properties": {
+          "webfetch": {
+            "const": "allow"
+          },
+          "webfetchAllowlist": {
+            "maxItems": 0
+          }
+        }
+      }
+    }
+  ],
+  "examples": [
+    {
+      "network": "deny",
+      "mode": "enforce",
+      "unsandboxedCommands": [
+        "gh auth status",
+        "gh pr *",
+        "gh issue *"
+      ]
+    }
+  ]
+}
