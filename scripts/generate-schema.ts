@@ -10,7 +10,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import ts from "typescript";
+import * as ts from "typescript";
 import { DEFAULT_OPTIONS, type SandboxOptions } from "../src/types.ts";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
