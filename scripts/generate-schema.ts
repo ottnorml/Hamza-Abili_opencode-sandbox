@@ -11,7 +11,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
-import { DEFAULT_OPTIONS, RESERVED_ENV, type SandboxOptions } from "../src/types.ts";
+import { DEFAULT_OPTIONS, type SandboxOptions } from "../src/types.ts";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const typesPath = path.join(root, "src/types.ts");
@@ -69,51 +69,23 @@ function description(member: ts.PropertySignature): string {
   );
 }
 
-const extra: Partial<Record<keyof SandboxOptions, Schema>> = {
-  network: {
-    description: "Controls sandboxed shell network access; allow enables unrestricted egress, not only GitHub."
-  },
-  writablePaths: {
-    items: { type: "string", minLength: 1 }
-  },
-  readablePaths: {
-    items: { type: "string", minLength: 1 }
-  },
-  passEnv: {
-    items: {
-      type: "string",
-      pattern: "^[A-Za-z_][A-Za-z0-9_]*$",
-      not: { enum: [...RESERVED_ENV] }
-    }
-  },
-  shell: { pattern: "^/" },
-  webfetchAllowlist: {
-    items: {
-      type: "string",
-      pattern:
-        "^(?:\\*\\.|\\.)?[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)*\\.?$"
-    },
-    description: "Plain hostnames for the OpenCode webfetch tool. Empty allows all hosts. Not a shell-network filter."
-  },
-  deniedPaths: {
-    items: { type: "string", pattern: "\\S" }
-  },
-  unsandboxedCommands: {
-    items: {
-      type: "string",
-      pattern: "^(?!\\s*$)(?![\\s\\S]*[;&|`$()<>\\r\\n])(?:[^*\\r\\n]*|[^*\\r\\n]+ \\*)$"
-    },
-    description: "Exact commands or a 'prefix *' bypass. Commands run with host environment and permissions; prefer narrow allowlists."
-  }
-};
-
+/**
+ * TypeScript supplies option names, types, enum values and defaults. The schema
+ * file itself keeps editor-facing descriptions and constraints such as path
+ * patterns; these need human review because TS types cannot express them.
+ */
 export function generateSchema(): Schema {
+  const existing = JSON.parse(fs.readFileSync(schemaPath, "utf8")) as {
+    properties: Record<string, Schema>;
+    [key: string]: unknown;
+  };
+
   const properties: Record<string, Schema> = {
     $schema: {
       type: "string",
       minLength: 1,
       description:
-        "Optional schema URI for editor tooling only; the plugin does not load this URL or use it for runtime security decisions."
+        "Optional schema URI for editor tooling only; the plugin never fetches it or uses it for runtime security decisions."
     }
   };
 
@@ -123,12 +95,22 @@ export function generateSchema(): Schema {
     }
     const key = member.name.getText(source) as keyof SandboxOptions;
     if (!(key in DEFAULT_OPTIONS)) throw new Error(`Option ${key} has no default`);
-    const desc = description(member);
+
+    const previous = existing.properties[key] ?? {};
+    const inferred = toSchema(member.type);
+    const nested = inferred.items;
+    if (nested !== undefined && typeof nested === "object") {
+      inferred.items = {
+        ...((previous.items as Schema | undefined) ?? {}),
+        ...(nested as Schema)
+      };
+    }
+
     properties[key] = {
-      ...toSchema(member.type),
+      ...previous,
+      ...inferred,
       default: DEFAULT_OPTIONS[key],
-      ...(desc === "" ? {} : { description: desc }),
-      ...extra[key]
+      ...("description" in previous ? {} : { description: description(member) })
     };
   }
 
@@ -137,34 +119,7 @@ export function generateSchema(): Schema {
     throw new Error("SandboxOptions and DEFAULT_OPTIONS are out of sync");
   }
 
-  return {
-    $schema: "https://json-schema.org/draft/2020-12/schema",
-    title: "OpenCode Sandbox trusted policy",
-    description:
-      "Editor schema for opencode-sandbox.json; the runtime parser retains authority for policy security.",
-    type: "object",
-    additionalProperties: false,
-    properties,
-    allOf: [
-      {
-        if: { properties: { toolGuard: { const: "off" } }, required: ["toolGuard"] },
-        then: {
-          properties: {
-            webfetch: { const: "allow" },
-            webfetchAllowlist: { maxItems: 0 }
-          }
-        }
-      }
-    ],
-    examples: [
-      {
-        $schema: "./schemas/opencode-sandbox.schema.json",
-        network: "deny",
-        mode: "enforce",
-        unsandboxedCommands: ["gh auth status", "gh pr *", "gh issue *"]
-      }
-    ]
-  };
+  return { ...existing, additionalProperties: false, properties };
 }
 
 if (import.meta.main) {
