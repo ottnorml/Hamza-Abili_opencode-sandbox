@@ -118,7 +118,7 @@
       "type": "array",
       "items": {
         "type": "string",
-        "pattern": "^(?!\\s*$)(?!.*[;&|`$()<>\\r\\n])(?:[^*]*|[^*]+ \\*)$",
+        "pattern": "^(?!\\s*$)(?![\\s\\S]*[;&|`$()<>\\r\\n])(?:[^*\\r\\n]*|[^*\\r\\n]+ \\*)$",
         "description": "Exact shell command or a 'prefix *' pattern. Shell metacharacters and chains are prohibited. These commands execute on the host with its full environment and permissions."
       },
       "uniqueItems": true,
