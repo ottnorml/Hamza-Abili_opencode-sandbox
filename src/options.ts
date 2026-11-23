@@ -81,6 +81,14 @@ export function parseOptionsSafe(raw: unknown, cwd: string): ParsedOptions {
   const record = isRecord(raw) ? raw : {};
   const errors: string[] = [];
   const present = new Set<keyof SandboxOptions>();
+  // $schema is editor metadata only. It never changes sandbox permissions or
+  // causes the runtime to fetch or trust an external schema.
+  if (
+    record.$schema !== undefined &&
+    (typeof record.$schema !== "string" || record.$schema.trim() === "")
+  ) {
+    errors.push("$schema must be a non-empty string");
+  }
 
   const writable = new Set<string>();
   if (record.writablePaths !== undefined) present.add("writablePaths");

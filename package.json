@@ -46,6 +46,7 @@
   },
   "files": [
     "src",
+    "schemas",
     "scripts",
     "index.ts",
     "README.md",
@@ -58,7 +59,9 @@
     "lint": "biome check .",
     "format": "biome check --write .",
     "test": "bun test",
-    "ci": "bun run lint && bun run typecheck && bun run test",
+    "schema:generate": "bun scripts/generate-schema.ts && bunx biome format --write schemas/opencode-sandbox.schema.json",
+    "schema:check": "bun scripts/generate-schema.ts --check",
+    "ci": "bun run schema:check && bun run lint && bun run typecheck && bun run test",
     "compat": "bun run ci && bun run smoke",
     "doctor": "bun scripts/doctor.ts",
     "smoke": "bun scripts/smoke.ts"
