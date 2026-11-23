@@ -1,8 +1,8 @@
 /**
- * Generate the trusted-policy JSON Schema from the SandboxOptions TypeScript
- * interface, its string-literal union aliases and DEFAULT_OPTIONS. The small
- * constraints map documents extra runtime checks that cannot be inferred from
- * TypeScript alone.
+ * Generate and check the trusted-policy schema using SandboxOptions and
+ * DEFAULT_OPTIONS as the source of truth for names, types, enums and defaults.
+ * Descriptions and security-specific editor constraints remain reviewed in
+ * the checked-in JSON Schema.
  *
  * bun run schema:generate
  * bun run schema:check
@@ -10,76 +10,45 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import ts from "typescript";
 import { DEFAULT_OPTIONS, type SandboxOptions } from "../src/types.ts";
 
+type Schema = Record<string, unknown>;
 const root = fileURLToPath(new URL("../", import.meta.url));
-const typesPath = path.join(root, "src/types.ts");
+const sourcePath = path.join(root, "src/types.ts");
 const schemaPath = path.join(root, "schemas/opencode-sandbox.schema.json");
-const source = ts.createSourceFile(
-  typesPath,
-  fs.readFileSync(typesPath, "utf8"),
-  ts.ScriptTarget.Latest,
-  true,
-  ts.ScriptKind.TS
-);
+const source = fs.readFileSync(sourcePath, "utf8");
 
 const aliases = new Map(
-  source.statements
-    .filter(ts.isTypeAliasDeclaration)
-    .map((node) => [node.name.text, node.type])
+  [...source.matchAll(/^export type (\w+) = ([^;]+);$/gm)].map((match) => [match[1], match[2]])
 );
-const optionsType = source.statements.find(
-  (node): node is ts.InterfaceDeclaration =>
-    ts.isInterfaceDeclaration(node) && node.name.text === "SandboxOptions"
-);
-if (optionsType === undefined) throw new Error("SandboxOptions interface not found");
+const declaration = source.match(/export interface SandboxOptions \{([\s\S]*?)^\}/m)?.[1];
+if (declaration === undefined) throw new Error("SandboxOptions interface not found");
 
-type Schema = Record<string, unknown>;
+const members = [...declaration.matchAll(/^  (\w+): (\w+(?:\[\])?);$/gm)];
+if (members.length === 0) throw new Error("No SandboxOptions members found");
 
-function toSchema(node: ts.TypeNode): Schema {
-  if (node.kind === ts.SyntaxKind.StringKeyword) return { type: "string" };
-  if (ts.isArrayTypeNode(node)) {
-    return { type: "array", items: toSchema(node.elementType), uniqueItems: true };
+function toSchema(type: string): Schema {
+  if (type === "string") return { type: "string" };
+  if (type.endsWith("[]")) {
+    return { type: "array", items: toSchema(type.slice(0, -2)), uniqueItems: true };
   }
-  if (ts.isTypeReferenceNode(node)) {
-    const alias = aliases.get(node.typeName.getText(source));
-    if (alias !== undefined) return toSchema(alias);
+  const alias = aliases.get(type);
+  if (alias !== undefined) {
+    const enumValues = alias.split("|").map((part) => {
+      const match = /^"([^"]+)"$/.exec(part.trim());
+      if (match === null) throw new Error(`Unsupported type alias: ${type}`);
+      return match[1];
+    });
+    return { type: "string", enum: enumValues };
   }
-  if (ts.isUnionTypeNode(node)) {
-    const values = node.types.map((type) =>
-      ts.isLiteralTypeNode(type) && ts.isStringLiteral(type.literal)
-        ? type.literal.text
-        : undefined
-    );
-    if (values.every((value): value is string => value !== undefined)) {
-      return { type: "string", enum: values };
-    }
-  }
-  throw new Error(`Unsupported SandboxOptions type: ${node.getText(source)}`);
+  throw new Error(`Unsupported SandboxOptions type: ${type}`);
 }
 
-function description(member: ts.PropertySignature): string {
-  return (
-    member.jsDoc
-      ?.map((doc) => (typeof doc.comment === "string" ? doc.comment : ""))
-      .join(" ")
-      .replace(/\s+/g, " ")
-      .trim() ?? ""
-  );
-}
-
-/**
- * TypeScript supplies option names, types, enum values and defaults. The schema
- * file itself keeps editor-facing descriptions and constraints such as path
- * patterns; these need human review because TS types cannot express them.
- */
 export function generateSchema(): Schema {
   const existing = JSON.parse(fs.readFileSync(schemaPath, "utf8")) as {
     properties: Record<string, Schema>;
     [key: string]: unknown;
   };
-
   const properties: Record<string, Schema> = {
     $schema: {
       type: "string",
@@ -89,32 +58,23 @@ export function generateSchema(): Schema {
     }
   };
 
-  for (const member of optionsType.members) {
-    if (!ts.isPropertySignature(member) || member.type === undefined) {
-      throw new Error("Unexpected member of SandboxOptions");
-    }
-    const key = member.name.getText(source) as keyof SandboxOptions;
+  for (const [, name, type] of members) {
+    const key = name as keyof SandboxOptions;
     if (!(key in DEFAULT_OPTIONS)) throw new Error(`Option ${key} has no default`);
-
     const previous = existing.properties[key] ?? {};
-    const inferred = toSchema(member.type);
-    const nested = inferred.items;
-    if (nested !== undefined && typeof nested === "object") {
+    const inferred = toSchema(type);
+    if (inferred.items !== undefined) {
       inferred.items = {
         ...((previous.items as Schema | undefined) ?? {}),
-        ...(nested as Schema)
+        ...(inferred.items as Schema)
       };
     }
-
-    properties[key] = {
-      ...previous,
-      ...inferred,
-      default: DEFAULT_OPTIONS[key],
-      ...("description" in previous ? {} : { description: description(member) })
-    };
+    properties[key] = { ...previous, ...inferred, default: DEFAULT_OPTIONS[key] };
   }
 
-  const keys = Object.keys(properties).filter((key) => key !== "$schema").sort();
+  const keys = Object.keys(properties)
+    .filter((key) => key !== "$schema")
+    .sort();
   if (JSON.stringify(keys) !== JSON.stringify(Object.keys(DEFAULT_OPTIONS).sort())) {
     throw new Error("SandboxOptions and DEFAULT_OPTIONS are out of sync");
   }
