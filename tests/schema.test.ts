@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
-import { DEFAULT_OPTIONS } from "../src/types.ts";
 import { generateSchema } from "../scripts/generate-schema.ts";
+import { DEFAULT_OPTIONS } from "../src/types.ts";
 
 interface SchemaProperty {
   items?: {
