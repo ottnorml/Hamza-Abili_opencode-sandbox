@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { DEFAULT_OPTIONS } from "../src/types.ts";
+import { generateSchema } from "../scripts/generate-schema.ts";
 
 interface SchemaProperty {
   items?: {
@@ -19,11 +20,17 @@ const schema = JSON.parse(
 };
 
 describe("trusted policy JSON Schema", () => {
+  test("is synchronized with generated types, enums and defaults", () => {
+    expect(schema).toEqual(generateSchema());
+  });
   test("covers exactly the supported options and rejects unknown keys", () => {
     expect(schema.$schema).toBe("https://json-schema.org/draft/2020-12/schema");
     expect(schema.additionalProperties).toBe(false);
-    expect(Object.keys(schema.properties).sort()).toEqual(Object.keys(DEFAULT_OPTIONS).sort());
-    expect(schema.properties).not.toHaveProperty("$schema");
+    expect(Object.keys(schema.properties).sort()).toEqual(
+      ["$schema", ...Object.keys(DEFAULT_OPTIONS)].sort()
+    );
+    expect(schema.properties).toHaveProperty("$schema");
+    expect(schema.properties.$schema).toMatchObject({ type: "string", minLength: 1 });
   });
 
   test("limits unsandboxed command patterns to safe exact/prefix forms", () => {
