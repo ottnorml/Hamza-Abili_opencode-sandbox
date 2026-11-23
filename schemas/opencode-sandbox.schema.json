@@ -5,15 +5,26 @@
   "type": "object",
   "additionalProperties": false,
   "properties": {
+    "$schema": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Optional schema URI for editor tooling only; the plugin never fetches it or uses it for runtime security decisions."
+    },
     "network": {
       "type": "string",
-      "enum": ["deny", "allow"],
+      "enum": [
+        "deny",
+        "allow"
+      ],
       "default": "deny",
       "description": "Whether sandboxed shell commands can access the network. 'allow' permits unrestricted shell network access, not just GitHub."
     },
     "mode": {
       "type": "string",
-      "enum": ["enforce", "permissive"],
+      "enum": [
+        "enforce",
+        "permissive"
+      ],
       "default": "enforce",
       "description": "In enforce mode, shell commands are refused if the sandbox cannot start. Permissive mode is a global sandbox opt-out."
     },
@@ -71,13 +82,19 @@
     },
     "toolGuard": {
       "type": "string",
-      "enum": ["enforce", "off"],
+      "enum": [
+        "enforce",
+        "off"
+      ],
       "default": "enforce",
       "description": "Apply policy checks to OpenCode file tools and webfetch; off disables this in-process guard but not the shell sandbox."
     },
     "webfetch": {
       "type": "string",
-      "enum": ["allow", "deny"],
+      "enum": [
+        "allow",
+        "deny"
+      ],
       "default": "allow",
       "description": "Allow or deny the OpenCode webfetch tool. Requires toolGuard=enforce when set to deny."
     },
@@ -122,7 +139,9 @@
             "const": "off"
           }
         },
-        "required": ["toolGuard"]
+        "required": [
+          "toolGuard"
+        ]
       },
       "then": {
         "properties": {
@@ -138,9 +157,14 @@
   ],
   "examples": [
     {
+      "$schema": "https://raw.githubusercontent.com/ottnorml/Hamza-Abili_opencode-sandbox/main/schemas/opencode-sandbox.schema.json",
       "network": "deny",
       "mode": "enforce",
-      "unsandboxedCommands": ["gh auth status", "gh pr *", "gh issue *"]
+      "unsandboxedCommands": [
+        "gh auth status",
+        "gh pr *",
+        "gh issue *"
+      ]
     }
   ]
 }
